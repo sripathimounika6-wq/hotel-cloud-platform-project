@@ -1,0 +1,220 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Smart Hotel Booking & Room Automation Platform
+  Cloud services used programmatically: API Gateway, Lambda, DynamoDB,
+  S3, SNS, SQS, Cognito.
+
+Parameters:
+  LabRoleArn:
+    Type: String
+    Description: >
+      ARN of the pre-existing AWS Academy Learner Lab execution role
+      (LabRole). Learner Lab accounts don't allow SAM to create new IAM
+      roles, so every Lambda function reuses this one instead.
+
+Globals:
+  Function:
+    Runtime: python3.14
+    Timeout: 10
+    MemorySize: 256
+    Environment:
+      Variables:
+        BOOKINGS_TABLE: !Ref BookingsTable
+        ROOMS_TABLE: !Ref RoomsTable
+        REQUESTS_TABLE: !Ref RequestsTable
+        NOTIFICATIONS_TABLE: !Ref NotificationsTable
+        DOCS_BUCKET: !Ref GuestDocsBucket
+        BOOKING_TOPIC_ARN: !Ref BookingCreatedTopic
+        HOUSEKEEPING_QUEUE_URL: !Ref HousekeepingQueue
+
+Resources:
+
+  # ---------------------------------------------------------------
+  # API Gateway - fronts the two guest-facing Lambda functions
+  # ---------------------------------------------------------------
+  HotelApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt GuestUserPool.Arn
+
+  # ---------------------------------------------------------------
+  # Lambda functions
+  # ---------------------------------------------------------------
+  BookingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: booking_handler.handler
+      CodeUri: ../lambda/
+      Role: !Ref LabRoleArn
+      Events:
+        CreateBooking:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HotelApi
+            Path: /bookings
+            Method: POST
+
+  HousekeepingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: housekeeping_handler.handler
+      CodeUri: ../lambda/
+      Role: !Ref LabRoleArn
+      Events:
+        CreateRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref HotelApi
+            Path: /requests
+            Method: POST
+
+  NotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: notification_handler.handler
+      CodeUri: ../lambda/
+      Role: !Ref LabRoleArn
+      Events:
+        NotificationQueueTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt NotificationQueue.Arn
+            BatchSize: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+  # ---------------------------------------------------------------
+  # DynamoDB tables
+  # ---------------------------------------------------------------
+  BookingsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: booking_id
+        Type: String
+
+  RoomsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: room_type
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: room_type
+          KeyType: HASH
+        - AttributeName: date
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  RequestsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: request_id
+        Type: String
+
+  NotificationsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: notification_id
+        Type: String
+
+  # ---------------------------------------------------------------
+  # S3 - guest documents / check-in instructions
+  # ---------------------------------------------------------------
+  GuestDocsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # ---------------------------------------------------------------
+  # SNS - BookingCreated topic, fans out to two SQS queues
+  # ---------------------------------------------------------------
+  BookingCreatedTopic:
+    Type: AWS::SNS::Topic
+
+  NotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 30
+
+  HousekeepingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 30
+
+  NotificationQueueSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref BookingCreatedTopic
+      Protocol: sqs
+      Endpoint: !GetAtt NotificationQueue.Arn
+
+  NotificationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref NotificationQueue]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: sqs:SendMessage
+            Resource: !GetAtt NotificationQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref BookingCreatedTopic
+
+  # ---------------------------------------------------------------
+  # Cognito - guest/staff authentication
+  # ---------------------------------------------------------------
+  GuestUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: hotel-guest-pool
+      AutoVerifiedAttributes: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireNumbers: true
+
+  GuestUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref GuestUserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of the deployed API
+    Value: !Sub "https://${HotelApi}.execute-api.${AWS::Region}.amazonaws.com/prod/"
+  GuestDocsBucketName:
+    Value: !Ref GuestDocsBucket
+  UserPoolId:
+    Value: !Ref GuestUserPool
+  UserPoolClientId:
+    Value: !Ref GuestUserPoolClient
