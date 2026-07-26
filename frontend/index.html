@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian Stay — Smart Booking</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap');
+
+  :root{
+    --ink:#1c2b2a;
+    --parchment:#f2ede2;
+    --brass:#a97e3f;
+    --brass-light:#d9b876;
+    --deep:#0f2420;
+    --line: rgba(28,43,42,0.14);
+    --error:#9c3b2e;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--parchment);
+    color:var(--ink);
+    font-family:'Space Grotesk', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .grain{
+    position:fixed; inset:0; pointer-events:none; opacity:0.035; z-index:1;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  header{
+    padding:56px 8vw 40px;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-size:12px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--brass); font-weight:600; margin-bottom:14px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:clamp(2.4rem, 5vw, 4.2rem);
+    line-height:1.02;
+    margin:0 0 18px;
+    letter-spacing:-0.01em;
+  }
+  h1 em{ font-style:italic; font-weight:300; color:var(--brass);}
+  .lede{
+    max-width:540px; font-size:17px; line-height:1.6; color:rgba(28,43,42,0.72);
+  }
+
+  main{
+    padding:60px 8vw 100px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:48px;
+  }
+  @media (max-width:880px){ main{grid-template-columns:1fr;} }
+
+  .panel{
+    background:#fbf9f3;
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:36px;
+    position:relative;
+  }
+  .panel::before{
+    content:attr(data-tag);
+    position:absolute; top:-11px; left:32px;
+    background:var(--deep); color:var(--brass-light);
+    font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+    padding:4px 12px; font-weight:600;
+  }
+  .panel h2{
+    font-family:'Fraunces', serif; font-weight:500; font-size:1.5rem; margin:8px 0 28px;
+  }
+
+  label{
+    display:block; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
+    color:rgba(28,43,42,0.55); margin-bottom:6px; margin-top:18px; font-weight:500;
+  }
+  label:first-of-type{margin-top:0;}
+  input, select{
+    width:100%; padding:12px 14px; font-size:15px; font-family:'Space Grotesk', sans-serif;
+    border:1px solid var(--line); border-radius:1px; background:#fff; color:var(--ink);
+    transition:border-color 0.15s;
+  }
+  input:focus, select:focus{
+    outline:none; border-color:var(--brass);
+  }
+
+  button{
+    margin-top:28px; width:100%; padding:14px 20px;
+    background:var(--deep); color:var(--brass-light); border:none; border-radius:1px;
+    font-family:'Space Grotesk', sans-serif; font-size:14px; font-weight:600;
+    letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+    transition:background 0.15s;
+  }
+  button:hover{ background:#183731; }
+  button:disabled{ opacity:0.5; cursor:wait; }
+
+  .result{
+    margin-top:22px; padding:16px 18px; border-radius:1px; font-size:13.5px;
+    line-height:1.7; font-family:'Space Grotesk', monospace; white-space:pre-wrap;
+    display:none;
+  }
+  .result.ok{ display:block; background:rgba(169,126,63,0.1); border:1px solid var(--brass); color:#5c4322; }
+  .result.err{ display:block; background:rgba(156,59,46,0.08); border:1px solid var(--error); color:var(--error); }
+
+  .config{
+    padding:20px 8vw; border-top:1px solid var(--line); font-size:12.5px;
+    color:rgba(28,43,42,0.5); display:flex; gap:24px; flex-wrap:wrap; align-items:center;
+  }
+  .config input{ width:auto; flex:1; min-width:260px; padding:8px 10px; font-size:12.5px; }
+  .config span{ font-weight:600; color:var(--ink); }
+
+  .price-tag{
+    font-family:'Fraunces', serif; font-size:2.2rem; color:var(--deep);
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<header>
+  <div class="eyebrow">Meridian Stay · Guest Services Portal</div>
+  <h1>Book the room.<br>Skip the <em>front desk</em>.</h1>
+  <p class="lede">Reserve a room with pricing that reflects tonight's real occupancy, or send a request straight to housekeeping — both routed through the same automated pipeline that prepares your check-in the moment you confirm.</p>
+</header>
+
+<main>
+  <section class="panel" data-tag="01 · Reservation">
+    <h2>Reserve a room</h2>
+    <form id="bookingForm">
+      <label for="guest_name">Guest name</label>
+      <input id="guest_name" required placeholder="Jane Doe">
+
+      <label for="room_type">Room type</label>
+      <select id="room_type">
+        <option>Deluxe</option>
+        <option>Standard</option>
+        <option>Suite</option>
+      </select>
+
+      <label for="checkin_date">Check-in date</label>
+      <input id="checkin_date" type="date" required>
+
+      <label for="base_rate">Base nightly rate (€)</label>
+      <input id="base_rate" type="number" step="0.01" value="150.00" required>
+
+      <label for="cancellation_policy">Cancellation policy</label>
+      <select id="cancellation_policy">
+        <option value="FLEXIBLE">Flexible</option>
+        <option value="MODERATE" selected>Moderate</option>
+        <option value="STRICT">Strict</option>
+      </select>
+
+      <button type="submit" id="bookBtn">Confirm reservation</button>
+    </form>
+    <div class="result" id="bookingResult"></div>
+  </section>
+
+  <section class="panel" data-tag="02 · Housekeeping">
+    <h2>Request housekeeping</h2>
+    <form id="requestForm">
+      <label for="booking_id">Booking ID</label>
+      <input id="booking_id" required placeholder="paste the booking_id from a reservation">
+
+      <label for="request_type">Request type</label>
+      <select id="request_type">
+        <option value="CLEANING">Room cleaning</option>
+        <option value="TOWELS">Extra towels</option>
+        <option value="ROOM_SERVICE">Room service</option>
+        <option value="MAINTENANCE">Maintenance</option>
+      </select>
+
+      <label for="notes">Notes</label>
+      <input id="notes" placeholder="Optional — any specifics">
+
+      <button type="submit" id="reqBtn">Send request</button>
+    </form>
+    <div class="result" id="requestResult"></div>
+  </section>
+</main>
+
+<div class="config">
+  <span>API endpoint</span>
+  <input id="apiBase" value="https://8x17e108c6.execute-api.us-east-1.amazonaws.com/prod">
+</div>
+
+<script>
+function apiBase(){
+  return document.getElementById('apiBase').value.replace(/\/$/, '');
+}
+
+function showResult(el, ok, text){
+  el.className = 'result ' + (ok ? 'ok' : 'err');
+  el.textContent = text;
+}
+
+document.getElementById('checkin_date').valueAsDate = new Date(Date.now() + 14*86400000);
+
+document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('bookBtn');
+  const result = document.getElementById('bookingResult');
+  btn.disabled = true; btn.textContent = 'Booking…';
+
+  const payload = {
+    guest_name: document.getElementById('guest_name').value,
+    room_type: document.getElementById('room_type').value,
+    checkin_date: document.getElementById('checkin_date').value,
+    base_rate: parseFloat(document.getElementById('base_rate').value),
+    cancellation_policy: document.getElementById('cancellation_policy').value
+  };
+
+  try {
+    const res = await fetch(apiBase() + '/bookings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showResult(result, true,
+        `Confirmed ✓\n\nBooking ID: ${data.booking_id}\nRate: €${data.price_per_night} / night\nCheck-in doc: ${data.checkin_doc_key}`);
+      document.getElementById('booking_id').value = data.booking_id;
+    } else {
+      showResult(result, false, 'Error: ' + (data.error || JSON.stringify(data)));
+    }
+  } catch (err) {
+    showResult(result, false, 'Network error: ' + err.message);
+  }
+  btn.disabled = false; btn.textContent = 'Confirm reservation';
+});
+
+document.getElementById('requestForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('reqBtn');
+  const result = document.getElementById('requestResult');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const payload = {
+    booking_id: document.getElementById('booking_id').value,
+    request_type: document.getElementById('request_type').value,
+    notes: document.getElementById('notes').value
+  };
+
+  try {
+    const res = await fetch(apiBase() + '/requests', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showResult(result, true, `Request logged ✓\n\nRequest ID: ${data.request_id}\nStatus: ${data.status}`);
+    } else {
+      showResult(result, false, 'Error: ' + (data.error || JSON.stringify(data)));
+    }
+  } catch (err) {
+    showResult(result, false, 'Network error: ' + err.message);
+  }
+  btn.disabled = false; btn.textContent = 'Send request';
+});
+</script>
+</body>
+</html>
