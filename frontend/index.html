@@ -3,187 +3,197 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meridian Stay — Smart Booking</title>
+<title>Auto — Service Booking</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
   :root{
-    --ink:#1c2b2a;
-    --parchment:#f2ede2;
-    --brass:#a97e3f;
-    --brass-light:#d9b876;
-    --deep:#0f2420;
-    --line: rgba(28,43,42,0.14);
-    --error:#9c3b2e;
+    --asphalt:#1a1d20;
+    --panel:#24282c;
+    --line:#3a3f44;
+    --safety:#ff6a13;
+    --safety-dim:#7a3a14;
+    --paper:#e9e6df;
+    --paper-dim:rgba(233,230,223,0.55);
+    --ok:#4caf6a;
+    --err:#e0523f;
   }
 
   *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
   body{
     margin:0;
-    background:var(--parchment);
-    color:var(--ink);
-    font-family:'Space Grotesk', sans-serif;
+    background:var(--asphalt);
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 8px);
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
     -webkit-font-smoothing:antialiased;
   }
 
-  .grain{
-    position:fixed; inset:0; pointer-events:none; opacity:0.035; z-index:1;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
   header{
-    padding:56px 8vw 40px;
-    border-bottom:1px solid var(--line);
+    padding:48px 6vw 36px;
+    border-bottom:2px solid var(--safety);
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:20px;
   }
-  .eyebrow{
-    font-size:12px; letter-spacing:0.18em; text-transform:uppercase;
-    color:var(--brass); font-weight:600; margin-bottom:14px;
+  .brand{
+    font-family:'Oswald', sans-serif; font-weight:700; font-size:1.1rem;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--safety);
+    display:flex; align-items:center; gap:10px;
   }
+  .brand::before{ content:"⛒"; font-size:1.3rem; }
   h1{
-    font-family:'Fraunces', serif;
-    font-weight:500;
-    font-size:clamp(2.4rem, 5vw, 4.2rem);
-    line-height:1.02;
-    margin:0 0 18px;
-    letter-spacing:-0.01em;
+    font-family:'Oswald', sans-serif; font-weight:600;
+    font-size:clamp(2.2rem, 5vw, 3.6rem);
+    text-transform:uppercase; letter-spacing:0.01em;
+    margin:14px 0 10px; line-height:1.05; color:var(--paper);
   }
-  h1 em{ font-style:italic; font-weight:300; color:var(--brass);}
-  .lede{
-    max-width:540px; font-size:17px; line-height:1.6; color:rgba(28,43,42,0.72);
+  .lede{ max-width:520px; font-size:14px; line-height:1.7; color:var(--paper-dim); }
+  .stamp{
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:11px;
+    letter-spacing:0.16em; text-transform:uppercase; color:var(--asphalt);
+    background:var(--safety); padding:6px 14px; white-space:nowrap;
+    transform:rotate(-2deg);
   }
 
   main{
-    padding:60px 8vw 100px;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:48px;
+    padding:56px 6vw 100px;
+    display:grid; grid-template-columns:1fr 1fr; gap:40px;
   }
-  @media (max-width:880px){ main{grid-template-columns:1fr;} }
+  @media (max-width:900px){ main{grid-template-columns:1fr;} }
 
-  .panel{
-    background:#fbf9f3;
+  .docket{
+    background:var(--panel);
     border:1px solid var(--line);
-    border-radius:2px;
-    padding:36px;
     position:relative;
   }
-  .panel::before{
-    content:attr(data-tag);
-    position:absolute; top:-11px; left:32px;
-    background:var(--deep); color:var(--brass-light);
-    font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
-    padding:4px 12px; font-weight:600;
+  .docket::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:6px;
+    background:repeating-linear-gradient(90deg, var(--safety) 0 14px, transparent 14px 24px);
   }
-  .panel h2{
-    font-family:'Fraunces', serif; font-weight:500; font-size:1.5rem; margin:8px 0 28px;
+  .docket-head{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:22px 28px 18px; border-bottom:1px dashed var(--line);
   }
+  .docket-tag{
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:0.95rem;
+    text-transform:uppercase; letter-spacing:0.04em; color:var(--paper);
+  }
+  .docket-num{ font-size:11px; color:var(--safety); letter-spacing:0.1em; }
+  .docket-body{ padding:24px 28px 28px; }
 
   label{
-    display:block; font-size:12px; letter-spacing:0.06em; text-transform:uppercase;
-    color:rgba(28,43,42,0.55); margin-bottom:6px; margin-top:18px; font-weight:500;
+    display:block; font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--paper-dim); margin-bottom:6px; margin-top:18px; font-weight:500;
   }
   label:first-of-type{margin-top:0;}
   input, select{
-    width:100%; padding:12px 14px; font-size:15px; font-family:'Space Grotesk', sans-serif;
-    border:1px solid var(--line); border-radius:1px; background:#fff; color:var(--ink);
-    transition:border-color 0.15s;
+    width:100%; padding:11px 13px; font-size:14px; font-family:'IBM Plex Mono', monospace;
+    border:1px solid var(--line); border-radius:0; background:#15181a; color:var(--paper);
   }
-  input:focus, select:focus{
-    outline:none; border-color:var(--brass);
-  }
+  input:focus, select:focus{ outline:none; border-color:var(--safety); }
+  input::placeholder{ color:rgba(233,230,223,0.3); }
 
   button{
-    margin-top:28px; width:100%; padding:14px 20px;
-    background:var(--deep); color:var(--brass-light); border:none; border-radius:1px;
-    font-family:'Space Grotesk', sans-serif; font-size:14px; font-weight:600;
-    letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
-    transition:background 0.15s;
+    margin-top:26px; width:100%; padding:14px 20px;
+    background:var(--safety); color:var(--asphalt); border:none;
+    font-family:'Oswald', sans-serif; font-size:14px; font-weight:700;
+    letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
   }
-  button:hover{ background:#183731; }
+  button:hover{ background:#ff7d33; }
   button:disabled{ opacity:0.5; cursor:wait; }
 
   .result{
-    margin-top:22px; padding:16px 18px; border-radius:1px; font-size:13.5px;
-    line-height:1.7; font-family:'Space Grotesk', monospace; white-space:pre-wrap;
-    display:none;
+    margin-top:20px; padding:14px 16px; font-size:12.5px; line-height:1.7;
+    white-space:pre-wrap; display:none; border-left:3px solid;
   }
-  .result.ok{ display:block; background:rgba(169,126,63,0.1); border:1px solid var(--brass); color:#5c4322; }
-  .result.err{ display:block; background:rgba(156,59,46,0.08); border:1px solid var(--error); color:var(--error); }
+  .result.ok{ display:block; background:rgba(76,175,106,0.08); border-color:var(--ok); color:#a7dab7; }
+  .result.err{ display:block; background:rgba(224,82,63,0.08); border-color:var(--err); color:#f0a99e; }
 
   .config{
-    padding:20px 8vw; border-top:1px solid var(--line); font-size:12.5px;
-    color:rgba(28,43,42,0.5); display:flex; gap:24px; flex-wrap:wrap; align-items:center;
+    padding:18px 6vw; border-top:1px solid var(--line); font-size:11.5px;
+    color:var(--paper-dim); display:flex; gap:20px; flex-wrap:wrap; align-items:center;
   }
-  .config input{ width:auto; flex:1; min-width:260px; padding:8px 10px; font-size:12.5px; }
-  .config span{ font-weight:600; color:var(--ink); }
-
-  .price-tag{
-    font-family:'Fraunces', serif; font-size:2.2rem; color:var(--deep);
-  }
+  .config input{ width:auto; flex:1; min-width:260px; padding:7px 10px; font-size:11.5px; }
+  .config span{ font-weight:600; color:var(--paper); text-transform:uppercase; letter-spacing:0.08em; }
 </style>
 </head>
 <body>
-<div class="grain"></div>
 
 <header>
-  <div class="eyebrow">Meridian Stay · Guest Services Portal</div>
-  <h1>Book the room.<br>Skip the <em>front desk</em>.</h1>
-  <p class="lede">Reserve a room with pricing that reflects tonight's real occupancy, or send a request straight to housekeeping — both routed through the same automated pipeline that prepares your check-in the moment you confirm.</p>
+  <div>
+    <div class="brand">Ironclad Auto Service</div>
+    <h1>Book the bay.<br>Skip the phone queue.</h1>
+    <p class="lede">Schedule a service slot with labor pricing that reflects today's real bay occupancy, or flag an add-on request — both routed through the same automated pipeline that prepares your work order the moment you confirm.</p>
+  </div>
+  <div class="stamp">Fleet &amp; Retail Service Desk</div>
 </header>
 
 <main>
-  <section class="panel" data-tag="01 · Reservation">
-    <h2>Reserve a room</h2>
-    <form id="bookingForm">
-      <label for="guest_name">Guest name</label>
-      <input id="guest_name" required placeholder="Jane Doe">
+  <section class="docket">
+    <div class="docket-head">
+      <span class="docket-tag">01 · Book a Service Bay</span>
+      <span class="docket-num">FORM A-1</span>
+    </div>
+    <div class="docket-body">
+      <form id="apptForm">
+        <label for="customer_name">Customer name</label>
+        <input id="customer_name" required placeholder="Jane Doe">
 
-      <label for="room_type">Room type</label>
-      <select id="room_type">
-        <option>Deluxe</option>
-        <option>Standard</option>
-        <option>Suite</option>
-      </select>
+        <label for="vehicle_reg">Vehicle registration</label>
+        <input id="vehicle_reg" required placeholder="13-D-45678">
 
-      <label for="checkin_date">Check-in date</label>
-      <input id="checkin_date" type="date" required>
+        <label for="service_type">Service type</label>
+        <select id="service_type">
+          <option>Oil Change</option>
+          <option>Full Service</option>
+          <option>Diagnostic</option>
+          <option>Repair</option>
+        </select>
 
-      <label for="base_rate">Base nightly rate (€)</label>
-      <input id="base_rate" type="number" step="0.01" value="150.00" required>
+        <label for="appointment_date">Appointment date</label>
+        <input id="appointment_date" type="date" required>
 
-      <label for="cancellation_policy">Cancellation policy</label>
-      <select id="cancellation_policy">
-        <option value="FLEXIBLE">Flexible</option>
-        <option value="MODERATE" selected>Moderate</option>
-        <option value="STRICT">Strict</option>
-      </select>
+        <label for="base_rate">Base labor rate (€)</label>
+        <input id="base_rate" type="number" step="0.01" value="120.00" required>
 
-      <button type="submit" id="bookBtn">Confirm reservation</button>
-    </form>
-    <div class="result" id="bookingResult"></div>
+        <label for="cancellation_policy">Cancellation policy</label>
+        <select id="cancellation_policy">
+          <option value="FLEXIBLE">Flexible</option>
+          <option value="STANDARD" selected>Standard</option>
+          <option value="NO_SHOW_STRICT">No-show strict</option>
+        </select>
+
+        <button type="submit" id="apptBtn">Confirm appointment</button>
+      </form>
+      <div class="result" id="apptResult"></div>
+    </div>
   </section>
 
-  <section class="panel" data-tag="02 · Housekeeping">
-    <h2>Request housekeeping</h2>
-    <form id="requestForm">
-      <label for="booking_id">Booking ID</label>
-      <input id="booking_id" required placeholder="paste the booking_id from a reservation">
+  <section class="docket">
+    <div class="docket-head">
+      <span class="docket-tag">02 · Additional Request</span>
+      <span class="docket-num">FORM A-2</span>
+    </div>
+    <div class="docket-body">
+      <form id="requestForm">
+        <label for="appointment_id">Appointment ID</label>
+        <input id="appointment_id" required placeholder="paste the appointment_id from a booking">
 
-      <label for="request_type">Request type</label>
-      <select id="request_type">
-        <option value="CLEANING">Room cleaning</option>
-        <option value="TOWELS">Extra towels</option>
-        <option value="ROOM_SERVICE">Room service</option>
-        <option value="MAINTENANCE">Maintenance</option>
-      </select>
+        <label for="request_type">Request type</label>
+        <select id="request_type">
+          <option value="COURTESY_VEHICLE">Courtesy vehicle</option>
+          <option value="EXTRA_INSPECTION">Extra inspection</option>
+          <option value="PICKUP_DROPOFF">Pickup / drop-off</option>
+          <option value="PARTS_ORDER">Parts order</option>
+        </select>
 
-      <label for="notes">Notes</label>
-      <input id="notes" placeholder="Optional — any specifics">
+        <label for="notes">Notes</label>
+        <input id="notes" placeholder="Optional — any specifics">
 
-      <button type="submit" id="reqBtn">Send request</button>
-    </form>
-    <div class="result" id="requestResult"></div>
+        <button type="submit" id="reqBtn">Send request</button>
+      </form>
+      <div class="result" id="requestResult"></div>
+    </div>
   </section>
 </main>
 
@@ -193,33 +203,31 @@
 </div>
 
 <script>
-function apiBase(){
-  return document.getElementById('apiBase').value.replace(/\/$/, '');
-}
-
+function apiBase(){ return document.getElementById('apiBase').value.replace(/\/$/, ''); }
 function showResult(el, ok, text){
   el.className = 'result ' + (ok ? 'ok' : 'err');
   el.textContent = text;
 }
 
-document.getElementById('checkin_date').valueAsDate = new Date(Date.now() + 14*86400000);
+document.getElementById('appointment_date').valueAsDate = new Date(Date.now() + 7*86400000);
 
-document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+document.getElementById('apptForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const btn = document.getElementById('bookBtn');
-  const result = document.getElementById('bookingResult');
+  const btn = document.getElementById('apptBtn');
+  const result = document.getElementById('apptResult');
   btn.disabled = true; btn.textContent = 'Booking…';
 
   const payload = {
-    guest_name: document.getElementById('guest_name').value,
-    room_type: document.getElementById('room_type').value,
-    checkin_date: document.getElementById('checkin_date').value,
+    customer_name: document.getElementById('customer_name').value,
+    vehicle_reg: document.getElementById('vehicle_reg').value,
+    service_type: document.getElementById('service_type').value,
+    appointment_date: document.getElementById('appointment_date').value,
     base_rate: parseFloat(document.getElementById('base_rate').value),
     cancellation_policy: document.getElementById('cancellation_policy').value
   };
 
   try {
-    const res = await fetch(apiBase() + '/bookings', {
+    const res = await fetch(apiBase() + '/appointments', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
@@ -227,15 +235,15 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     const data = await res.json();
     if (res.ok) {
       showResult(result, true,
-        `Confirmed ✓\n\nBooking ID: ${data.booking_id}\nRate: €${data.price_per_night} / night\nCheck-in doc: ${data.checkin_doc_key}`);
-      document.getElementById('booking_id').value = data.booking_id;
+        `CONFIRMED ✓\n\nAppointment ID: ${data.appointment_id}\nPrice: €${data.price}\nWork order: ${data.work_order_key}`);
+      document.getElementById('appointment_id').value = data.appointment_id;
     } else {
-      showResult(result, false, 'Error: ' + (data.error || JSON.stringify(data)));
+      showResult(result, false, 'ERROR: ' + (data.error || JSON.stringify(data)));
     }
   } catch (err) {
-    showResult(result, false, 'Network error: ' + err.message);
+    showResult(result, false, 'NETWORK ERROR: ' + err.message);
   }
-  btn.disabled = false; btn.textContent = 'Confirm reservation';
+  btn.disabled = false; btn.textContent = 'Confirm appointment';
 });
 
 document.getElementById('requestForm').addEventListener('submit', async (e) => {
@@ -245,7 +253,7 @@ document.getElementById('requestForm').addEventListener('submit', async (e) => {
   btn.disabled = true; btn.textContent = 'Sending…';
 
   const payload = {
-    booking_id: document.getElementById('booking_id').value,
+    appointment_id: document.getElementById('appointment_id').value,
     request_type: document.getElementById('request_type').value,
     notes: document.getElementById('notes').value
   };
@@ -258,12 +266,12 @@ document.getElementById('requestForm').addEventListener('submit', async (e) => {
     });
     const data = await res.json();
     if (res.ok) {
-      showResult(result, true, `Request logged ✓\n\nRequest ID: ${data.request_id}\nStatus: ${data.status}`);
+      showResult(result, true, `REQUEST LOGGED ✓\n\nRequest ID: ${data.request_id}\nStatus: ${data.status}`);
     } else {
-      showResult(result, false, 'Error: ' + (data.error || JSON.stringify(data)));
+      showResult(result, false, 'ERROR: ' + (data.error || JSON.stringify(data)));
     }
   } catch (err) {
-    showResult(result, false, 'Network error: ' + err.message);
+    showResult(result, false, 'NETWORK ERROR: ' + err.message);
   }
   btn.disabled = false; btn.textContent = 'Send request';
 });

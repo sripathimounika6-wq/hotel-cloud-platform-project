@@ -1,11 +1,13 @@
 """
-housekeeping_handler.py
+service_request_handler.py
 
 Lambda function behind: POST /requests  (via API Gateway)
 
-Guests submit housekeeping/room-service requests. This handler writes
-the request to DynamoDB and pushes it onto an SQS queue that staff-side
-tooling (or a staff mobile app, out of scope here) polls for new tasks.
+Customers submit additional service requests against an existing
+appointment (e.g. request a courtesy vehicle, an extra inspection, or
+pickup/drop-off). This handler writes the request to DynamoDB and
+pushes it onto an SQS queue that the service center's staff tooling
+polls for new tasks.
 
 Cloud services used programmatically here: API Gateway (trigger),
 Lambda, DynamoDB, SQS.
@@ -22,24 +24,32 @@ dynamodb = boto3.resource("dynamodb")
 sqs = boto3.client("sqs")
 
 REQUESTS_TABLE = os.environ["REQUESTS_TABLE"]
-HOUSEKEEPING_QUEUE_URL = os.environ["HOUSEKEEPING_QUEUE_URL"]
+SERVICE_REQUEST_QUEUE_URL = os.environ["SERVICE_REQUEST_QUEUE_URL"]
 
 requests_table = dynamodb.Table(REQUESTS_TABLE)
 
-VALID_REQUEST_TYPES = {"CLEANING", "TOWELS", "ROOM_SERVICE", "MAINTENANCE"}
+VALID_REQUEST_TYPES = {"COURTESY_VEHICLE", "EXTRA_INSPECTION", "PICKUP_DROPOFF", "PARTS_ORDER"}
+
+CORS_HEADERS = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "OPTIONS,POST",
+}
 
 
 def handler(event, context):
     try:
         body = json.loads(event.get("body") or "{}")
 
-        booking_id = body["booking_id"]
+        appointment_id = body["appointment_id"]
         request_type = body["request_type"].upper()
         notes = body.get("notes", "")
 
         if request_type not in VALID_REQUEST_TYPES:
             return {
                 "statusCode": 400,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({
                     "error": f"request_type must be one of {sorted(VALID_REQUEST_TYPES)}"
                 }),
@@ -48,7 +58,7 @@ def handler(event, context):
         request_id = str(uuid.uuid4())
         item = {
             "request_id": request_id,
-            "booking_id": booking_id,
+            "appointment_id": appointment_id,
             "request_type": request_type,
             "notes": notes,
             "status": "PENDING",
@@ -58,7 +68,7 @@ def handler(event, context):
         requests_table.put_item(Item=item)
 
         sqs.send_message(
-            QueueUrl=HOUSEKEEPING_QUEUE_URL,
+            QueueUrl=SERVICE_REQUEST_QUEUE_URL,
             MessageBody=json.dumps(item),
             MessageAttributes={
                 "request_type": {"DataType": "String", "StringValue": request_type}
@@ -67,11 +77,19 @@ def handler(event, context):
 
         return {
             "statusCode": 201,
-            "headers": {"Content-Type": "application/json"},
+            "headers": CORS_HEADERS,
             "body": json.dumps(item),
         }
 
     except KeyError as e:
-        return {"statusCode": 400, "body": json.dumps({"error": f"Missing field: {e}"})}
+        return {
+            "statusCode": 400,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Missing field: {e}"}),
+        }
     except Exception as e:
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": str(e)}),
+        }

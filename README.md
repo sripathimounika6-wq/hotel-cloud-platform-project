@@ -1,164 +1,128 @@
-# Smart Hotel Booking & Room Automation Platform
-Hospitality sector — Cloud Platform Programming project (AWS)
+# Ironclad Auto — Fleet Vehicle Service & Maintenance Booking Platform
+Automotive sector — Cloud Platform Programming project (AWS)
 
 ## 1. What this is
 
-A serverless hotel booking backend. Guests book rooms (with dynamic,
-occupancy-based pricing) and submit housekeeping requests. Bookings
-automatically trigger a check-in document generation and guest
-notification via an event-driven pipeline.
+A serverless vehicle service booking backend. Customers book a service
+bay slot for their vehicle (oil change, full service, diagnostic,
+repair) with labor pricing that reflects real bay occupancy, and submit
+additional service requests (courtesy vehicle, extra inspection,
+pickup/drop-off, parts order). A booking automatically triggers work
+order generation and a customer notification via an event-driven
+pipeline.
 
 ## 2. Architecture
 
 ```
-Guest (Cognito-authenticated)
+Customer
       │
       ▼
-API Gateway  ──POST /bookings──▶ BookingFunction (Lambda)
-      │                                │
-      │                                ├─▶ DynamoDB (BookingsTable, RoomsTable)
-      │                                ├─▶ S3 (check-in doc)
-      │                                └─▶ SNS "BookingCreated" topic
-      │                                          │
-      │                                          ▼
-      │                                   SQS NotificationQueue
-      │                                          │
-      │                                          ▼
-      │                                 NotificationFunction (Lambda)
-      │                                          │
-      │                                          ▼
-      │                                 DynamoDB (NotificationsTable)
+API Gateway  ──POST /appointments──▶ AppointmentFunction (Lambda)
+      │                                    │
+      │                                    ├─▶ DynamoDB (Appointments, Bays)
+      │                                    ├─▶ S3 (work order document)
+      │                                    └─▶ SNS "AppointmentCreated" topic
+      │                                              │
+      │                                              ▼
+      │                                       SQS NotificationQueue
+      │                                              │
+      │                                              ▼
+      │                                     NotificationFunction (Lambda)
+      │                                              │
+      │                                              ▼
+      │                                     DynamoDB (Notifications)
       │
-      └──POST /requests──▶ HousekeepingFunction (Lambda)
+      └──POST /requests──▶ ServiceRequestFunction (Lambda)
                                   │
-                                  ├─▶ DynamoDB (RequestsTable)
-                                  └─▶ SQS HousekeepingQueue (staff tooling polls this)
+                                  ├─▶ DynamoDB (Requests)
+                                  └─▶ SQS ServiceRequestQueue (staff tooling polls this)
 ```
 
-**Pattern used:** event-driven / fan-out via pub-sub (SNS → SQS), decoupling
-booking creation from downstream notification processing. This means the
-NotificationFunction can fail/retry independently of the booking API call
-succeeding — the guest's booking isn't blocked on notification delivery.
+**Pattern used:** event-driven / fan-out via pub-sub (SNS → SQS),
+decoupling appointment creation from downstream notification
+processing — the NotificationFunction can fail/retry independently of
+the booking API call succeeding.
 
 **Cloud services used programmatically (6, exceeds the 5 required):**
-1. API Gateway — REST trigger for both guest-facing Lambdas
+1. API Gateway — REST trigger for both customer-facing Lambdas
 2. Lambda — all three functions
-3. DynamoDB — 4 tables (bookings, rooms, requests, notifications)
-4. S3 — check-in document storage (object storage requirement)
-5. SNS — BookingCreated event topic (pub/sub requirement)
-6. SQS — notification queue + housekeeping queue (pub/sub requirement)
-7. Cognito — guest authentication (bonus, not counted toward the 5)
+3. DynamoDB — 4 tables (Appointments, Bays, Requests, Notifications)
+4. S3 — work order document storage (object storage requirement)
+5. SNS — AppointmentCreated event topic (pub/sub requirement)
+6. SQS — notification queue + service request queue (pub/sub requirement)
 
-## 3. Custom library: `booking_rules_engine`
+## 3. Custom library: `vehicle_service_engine`
 
-Located in `lib/booking_rules_engine/`. Pure Python, no AWS dependency,
-fully unit tested (`tests/test_booking_rules_engine.py`).
+Located in `lib/vehicle_service_engine/`. Pure Python, no AWS
+dependency, fully unit tested (`tests/test_vehicle_service_engine.py`).
 
 | Module | Purpose |
 |---|---|
-| `cancellation_policy.py` | Strategy pattern: FLEXIBLE / MODERATE / STRICT refund rules |
-| `pricing_strategy.py` | Strategy pattern: occupancy-based + last-minute dynamic pricing |
-| `overbooking_resolver.py` | Prioritises which bookings keep their room when oversold |
+| `cancellation_policy.py` | Strategy pattern: FLEXIBLE / STANDARD / NO_SHOW_STRICT deposit refund rules |
+| `labor_pricing.py` | Strategy pattern: occupancy-based + last-minute dynamic labor pricing |
+| `bay_allocation_resolver.py` | Prioritises which appointments keep their bay slot when overbooked, by customer tier (fleet accounts protected first) |
 
-`booking_handler.py` imports `PricingEngine` to compute nightly rates —
-this is the "meaningful functionality" the library provides to the app.
+`appointment_handler.py` imports `LaborPricingEngine` to compute the
+service price — this is the "meaningful functionality" the library
+provides to the application.
 
 Run tests locally:
 ```bash
-cd hotel-cloud-project
 python -m pytest tests/ -v
 ```
 
-## 4. How this was actually deployed
+## 4. Deployment (manual AWS Console + CLI)
 
-Two deployment paths are documented here:
-
-**A. Infrastructure-as-code (infra/template.yaml)** — an AWS SAM template
-that defines every resource declaratively. This is the reference
-architecture and is what `sam deploy` would provision if built in an
-environment with a matching local Python version and Docker available.
-
-**B. Manual AWS Console deployment (what was actually run for this
-submission)** — because the AWS Academy Learner Lab account restricts
-IAM role creation and the local machine's Python version didn't match
-the Lambda runtime for a container-free SAM build, the application was
-deployed by creating each resource directly in the AWS Console:
-
-1. **S3 buckets** — one for guest check-in documents (private), one for
-   hosting the static frontend (public read, static website hosting enabled)
-2. **DynamoDB tables** — `Bookings`, `Rooms`, `Requests`, `Notifications`
-   (created via console, on-demand billing mode)
-3. **SNS topic** — `BookingCreatedTopic`
-4. **SQS queues** — `NotificationQueue` (subscribed to the SNS topic),
-   `HousekeepingQueue`
-5. **Lambda functions** — `BookingFunction`, `HousekeepingFunction`,
-   `NotificationFunction`, each uploaded as a `.zip` (handler + vendored
-   `booking_rules_engine` library where needed), execution role set to
-   the Learner Lab's pre-existing `LabRole`, environment variables set
-   per function to point at the resources above
-6. **API Gateway** — REST API `HotelApi` with `POST /bookings` and
-   `POST /requests` resources, Lambda proxy integration, deployed to a
-   `prod` stage
-7. **Frontend** — `frontend/index.html` uploaded to the static-hosting
-   S3 bucket, bucket policy applied via `aws s3api put-bucket-policy`
-   granting public `s3:GetObject`
-
-The `infra/template.yaml` remains in this repo as the documented,
-intended infrastructure-as-code design (relevant to the architecture
-and CI/CD discussion in the report), even though the actual submitted
-deployment was provisioned manually due to the lab environment's
-constraints.
-
-## 5. Frontend
-
-`frontend/index.html` is a single-file static site (HTML/CSS/JS, no
-build step) with two forms:
-- **Reserve a room** → calls `POST {api}/bookings`
-- **Request housekeeping** → calls `POST {api}/requests`
-
-It's hardcoded with the deployed API Gateway invoke URL in the "API
-endpoint" field at the bottom of the page (editable if the API is
-redeployed at a new URL). Hosted on S3 with static website hosting
-enabled — this is the public application URL for the examiner.
-
-
-## 6. Reproducing the deployment (manual AWS Console + CLI path)
-
-**Prerequisites**
-- AWS account or AWS Academy Learner Lab access
-- AWS CLI installed and configured with valid credentials
-- (Optional, for the infra-as-code path) AWS SAM CLI + Docker, if you
-  want to deploy `infra/template.yaml` directly instead of following
-  the manual steps below
-
-**Step 1 — Create the S3 buckets**
-- One private bucket for check-in documents
+**Step 1 — S3 buckets**
+- One private bucket for work-order documents
 - One public bucket with static website hosting enabled, for the frontend
 
-**Step 2 — Create the DynamoDB tables**
-`Bookings` (PK: `booking_id`), `Rooms` (PK: `room_type`, SK: `date`),
-`Requests` (PK: `request_id`), `Notifications` (PK: `notification_id`) —
-all on-demand billing.
+**Step 2 — DynamoDB tables**
+| Table | Partition key | Sort key |
+|---|---|---|
+| `Appointments` | `appointment_id` (String) | — |
+| `Bays` | `service_type` (String) | `date` (String) |
+| `Requests` | `request_id` (String) | — |
+| `Notifications` | `notification_id` (String) | — |
 
-**Step 3 — Create the SNS topic and SQS queues**
-Topic `BookingCreatedTopic`; queues `NotificationQueue` and
-`HousekeepingQueue`; subscribe `NotificationQueue` to the topic.
+**Step 3 — SNS topic + SQS queues**
+Topic `AppointmentCreatedTopic`; queues `NotificationQueue` and
+`ServiceRequestQueue`; subscribe `NotificationQueue` to the topic.
 
-**Step 4 — Create the three Lambda functions**
-For each: Python 3.12 runtime, execution role = your account's existing
-Lambda role (e.g. `LabRole` in an Academy Lab), upload the handler +
-vendored `booking_rules_engine` library (only `BookingFunction` needs
-it) as a `.zip`, set the handler to `<file>.handler`, and set the
-environment variables listed in `infra/template.yaml` under each
-function's block.
+**Step 4 — Lambda functions**
+Python 3.12 runtime, execution role = your account's existing Lambda
+role (e.g. `LabRole` in an AWS Academy Lab):
+
+- `AppointmentFunction` — upload `appointment_function.zip` (handler +
+  vendored `vehicle_service_engine` library), handler:
+  `appointment_handler.handler`, env vars:
+  - `APPOINTMENTS_TABLE=Appointments`
+  - `BAYS_TABLE=Bays`
+  - `DOCS_BUCKET=<your-docs-bucket-name>`
+  - `APPOINTMENT_TOPIC_ARN=<AppointmentCreatedTopic ARN>`
+- `ServiceRequestFunction` — upload `service_request_function.zip`,
+  handler: `service_request_handler.handler`, env vars:
+  - `REQUESTS_TABLE=Requests`
+  - `SERVICE_REQUEST_QUEUE_URL=<ServiceRequestQueue URL>`
+- `NotificationFunction` — upload `notification_function.zip`, handler:
+  `notification_handler.handler`, env vars:
+  - `NOTIFICATIONS_TABLE=Notifications`
 
 **Step 5 — Wire NotificationQueue → NotificationFunction**
 Add an SQS trigger on `NotificationFunction` pointing at `NotificationQueue`.
 
-**Step 6 — Create the API Gateway**
-REST API with `POST /bookings` → `BookingFunction` and `POST /requests`
-→ `HousekeepingFunction`, both with Lambda proxy integration, deployed
-to a `prod` stage.
+**Step 6 — API Gateway**
+REST API `FleetApi` with:
+- `POST /appointments` → `AppointmentFunction` (Lambda proxy integration)
+- `POST /requests` → `ServiceRequestFunction` (Lambda proxy integration)
+
+Enable CORS on **both resources** (Actions → Enable CORS → check POST +
+OPTIONS → Allow-Origin `*`), then also add **Method Response** entries
+for status codes `201`, `400`, and `500` on each POST method with the
+same 3 CORS headers (`Access-Control-Allow-Origin`,
+`Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`) —
+Lambda proxy integration only passes headers through for status codes
+explicitly declared in Method Response. Deploy to a `prod` stage.
 
 **Step 7 — Upload the frontend**
 ```bash
@@ -166,57 +130,49 @@ aws s3 cp frontend/index.html s3://<your-frontend-bucket>/index.html
 aws s3 website s3://<your-frontend-bucket>/ --index-document index.html
 aws s3api put-bucket-policy --bucket <your-frontend-bucket> --policy file://bucket-policy.json
 ```
-where `bucket-policy.json` grants public `s3:GetObject` on the bucket.
+Then edit the "API endpoint" field at the bottom of the page (or the
+default value in `index.html`) to your deployed API's invoke URL.
 
-**Step 8 — Seed a room record**
+**Step 8 — Seed a bay occupancy record**
 ```bash
 aws dynamodb put-item \
-  --table-name Rooms \
-  --item '{"room_type":{"S":"Deluxe"},"date":{"S":"2026-08-15"},"total_rooms":{"N":"10"},"booked_rooms":{"N":"6"}}'
+  --table-name Bays \
+  --item '{"service_type":{"S":"Full Service"},"date":{"S":"2026-08-15"},"total_bays":{"N":"6"},"booked_bays":{"N":"4"}}'
 ```
 
 **Step 9 — Test**
-Open the frontend's S3 website URL in a browser, fill in the booking
-form, and submit — or test directly:
+Open the frontend's S3 website URL, submit the booking form, then use
+the returned `appointment_id` in the request form. Or via CLI:
 ```bash
-curl -X POST "<api-invoke-url>/bookings" \
+curl -X POST "<api-invoke-url>/appointments" \
   -H "Content-Type: application/json" \
-  -d '{"guest_name":"Jane Doe","room_type":"Deluxe","checkin_date":"2026-08-15","base_rate":150.00,"cancellation_policy":"MODERATE"}'
+  -d '{"customer_name":"Jane Doe","vehicle_reg":"13-D-45678","service_type":"Full Service","appointment_date":"2026-08-15","base_rate":120.00,"cancellation_policy":"STANDARD"}'
 ```
 
-**Step 10 — Verify the event pipeline fired**
-- `Bookings` and `Rooms` tables updated
-- `checkin-docs/<booking_id>.txt` present in the documents bucket
+**Step 10 — Verify the pipeline**
+- `Appointments` and `Bays` tables updated
+- `work-orders/<appointment_id>.txt` present in the docs bucket
 - CloudWatch Logs for `NotificationFunction` show a `[NOTIFY] ...` line
 - `Notifications` table has a new item
 
-## 7. Tearing down (only after grading — do not modify before the deadline)
-
-Delete the Lambda functions, API Gateway, DynamoDB tables, SNS topic,
-SQS queues, and S3 buckets via the console or `aws` CLI, or run
-`sam delete` if you deployed via the `infra/template.yaml` path instead.
-
-## 8. Project structure
+## 5. Project structure
 
 ```
-hotel-cloud-project/
-├── frontend/
-│   └── index.html               (static site — booking + housekeeping forms)
+fleet-cloud-project/
+├── frontend/index.html
 ├── lambda/
-│   ├── booking_handler.py
-│   ├── housekeeping_handler.py
+│   ├── appointment_handler.py
+│   ├── service_request_handler.py
 │   ├── notification_handler.py
-│   ├── booking_rules_engine/   (vendored copy of lib/)
-│   └── requirements.txt
-├── lib/
-│   └── booking_rules_engine/   (source of truth for the library)
-│       ├── __init__.py
-│       ├── cancellation_policy.py
-│       ├── pricing_strategy.py
-│       └── overbooking_resolver.py
-├── infra/
-│   └── template.yaml            (SAM/CloudFormation)
-├── tests/
-│   └── test_booking_rules_engine.py
-└── README.md
+│   └── vehicle_service_engine/     (vendored copy of lib/)
+├── lib/vehicle_service_engine/     (source of truth for the library)
+│   ├── __init__.py
+│   ├── cancellation_policy.py
+│   ├── labor_pricing.py
+│   └── bay_allocation_resolver.py
+└── tests/test_vehicle_service_engine.py
 ```
+
+## 6. Tearing down (only after grading)
+Delete the Lambda functions, API Gateway, DynamoDB tables, SNS topic,
+SQS queues, and S3 buckets via the console or `aws` CLI.

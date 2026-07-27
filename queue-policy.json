@@ -1,0 +1,10 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": "*",
+    "Action": "sqs:SendMessage",
+    "Resource": "arn:aws:sqs:us-east-1:841645841676:NotificationQueue",
+    "Condition": { "ArnEquals": { "aws:SourceArn": "arn:aws:sns:us-east-1:841645841676:AppointmentCreatedTopic" } }
+  }]
+}

@@ -2,11 +2,11 @@
 notification_handler.py
 
 Lambda function triggered by: SQS "notification-queue"
-(which is subscribed to the BookingCreated SNS topic)
+(which is subscribed to the AppointmentCreated SNS topic)
 
 Responsibilities:
-  1. Read the booking event from the SQS message
-  2. "Send" a guest notification (simulated here via SES-style logging;
+  1. Read the appointment event from the SQS message
+  2. "Send" a customer notification (simulated here via logging;
      swap in ses.send_email(...) for real email delivery)
   3. Record the notification in DynamoDB for audit/history purposes
 
@@ -25,16 +25,16 @@ NOTIFICATIONS_TABLE = os.environ["NOTIFICATIONS_TABLE"]
 notifications_table = dynamodb.Table(NOTIFICATIONS_TABLE)
 
 
-def _send_guest_notification(booking: dict) -> None:
+def _send_customer_notification(appointment: dict) -> None:
     """
-    Placeholder for actual guest communication (SES email / SMS via SNS).
-    Kept simple and explicit so it's easy to demo and explain in the
-    video walkthrough.
+    Placeholder for actual customer communication (SES email / SMS via
+    SNS). Kept simple and explicit so it's easy to demo and explain in
+    the video walkthrough.
     """
     message = (
-        f"Hi {booking['guest_name']}, your booking {booking['booking_id']} "
-        f"for a {booking['room_type']} room on {booking['checkin_date']} "
-        f"is confirmed at {booking['price_per_night']}/night."
+        f"Hi {appointment['customer_name']}, your {appointment['service_type']} "
+        f"appointment for vehicle {appointment['vehicle_reg']} on "
+        f"{appointment['appointment_date']} is confirmed at {appointment['price']}."
     )
     print(f"[NOTIFY] {message}")
 
@@ -46,13 +46,13 @@ def handler(event, context):
     for record in event.get("Records", []):
         try:
             sns_envelope = json.loads(record["body"])
-            booking = json.loads(sns_envelope["Message"])
+            appointment = json.loads(sns_envelope["Message"])
 
-            _send_guest_notification(booking)
+            _send_customer_notification(appointment)
 
             notifications_table.put_item(Item={
-                "notification_id": f"{booking['booking_id']}-confirmation",
-                "booking_id": booking["booking_id"],
+                "notification_id": f"{appointment['appointment_id']}-confirmation",
+                "appointment_id": appointment["appointment_id"],
                 "channel": "EMAIL",
                 "sent_at": datetime.utcnow().isoformat(),
                 "status": "SENT",

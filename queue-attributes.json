@@ -1,0 +1,1 @@
+{"Policy":"{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Principal\": \"*\",\n    \"Action\": \"sqs:SendMessage\",\n    \"Resource\": \"arn:aws:sqs:us-east-1:841645841676:NotificationQueue\",\n    \"Condition\": { \"ArnEquals\": { \"aws:SourceArn\": \"arn:aws:sns:us-east-1:841645841676:AppointmentCreatedTopic\" } }\n  }]\n}"}

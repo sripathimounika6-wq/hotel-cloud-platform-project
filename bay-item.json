@@ -1,0 +1,6 @@
+{
+  "service_type": {"S": "Full Service"},
+  "date": {"S": "2026-08-15"},
+  "total_bays": {"N": "6"},
+  "booked_bays": {"N": "4"}
+}
