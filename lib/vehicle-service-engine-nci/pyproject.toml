@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
-    { name = "Your Name", email = "you@example.com" }
+    { name = "Sripathi Mounika", email = "x24213934@Student.ncirl.com" }
 ]
 keywords = ["cloud-computing", "aws-lambda", "serverless", "vehicle-service", "strategy-pattern"]
 classifiers = [
@@ -26,8 +26,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/YOUR-GITHUB-USERNAME/fleet-cloud-project"
-Repository = "https://github.com/YOUR-GITHUB-USERNAME/fleet-cloud-project"
+Homepage = "https://github.com/sripathimounika6-wq/hotel-cloud-platform-project"
+Repository = "https://github.com/sripathimounika6-wq/hotel-cloud-platform-project"
 
 [tool.setuptools.packages.find]
 include = ["vehicle_service_engine*"]
